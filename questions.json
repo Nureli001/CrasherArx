@@ -3,7 +3,7 @@
 {
     "q": "DVD diskin yaddaş həcmi?",
     "options": { "A": "1.44 MB", "B": "4.7 GB", "C": "8.5 MB", "D": "700 MB" },
-    "correct": ""
+    "correct": "A"
   },
 {
     "q": "Kompüterin sürətini xarakterizə edən göstərici hansıdır?",
@@ -1936,3 +1936,4 @@
         "correct": "B"
     }
 ]
+
