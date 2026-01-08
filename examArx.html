@@ -1,136 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="az">
 <head>
-  <meta charset="UTF-8">
-  <title>Imtahan</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crasher Online Sınaq Sistemi</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        #timer { position: sticky; top: 10px; background: #e74c3c; color: white; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; z-index: 100; }
+        .question-block { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; transition: 0.3s; }
+        .option { display: block; margin: 8px 0; cursor: pointer; padding: 5px; border-radius: 4px; }
+        .option:hover { background: #f0f0f0; }
+        button { display: block; width: 100%; padding: 15px; font-size: 18px; background: #2ecc71; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #27ae60; }
+        #result { margin-top: 20px; }
+        .correct-ans { background-color: #d4edda !important; border-color: #c3e6cb; }
+        .wrong-ans { background-color: #f8d7da !important; border-color: #f5c6cb; }
+    </style>
 </head>
 <body>
 
-<h2>Imtahan</h2>
-<p id="timer"></p>
-<div id="quiz"></div>
-<button onclick="finish()" style="padding: 15px 40px; font-size: 20px; font-weight: bold; background-color: #2ecc71; color: white; border: none; border-radius: 8px; cursor: pointer;">
-  İmtahanı Bitir
-</button>
-<p id="result"></p>
+<div class="container">
+    <h2>Online Sınaq İmtahanı</h2>
+    <div id="timer">Yüklənir...</div>
+    <div id="quiz">Suallar hazırlanır, xahiş edirik gözləyin...</div>
+    <button id="finishBtn" onclick="finish()">İmtahanı Bitir</button>
+    <div id="result"></div>
+</div>
 
 <script>
 let TIME = 30 * 60;
 let interval;
 let startScore = 0;
+let currentQuestions = [];
+const QUESTIONS_URL = "https://nureli001.github.io/CrasherExam/questions.json";
 
-const QUESTIONS_URL =
-"https://nureli001.github.io/CrasherExam/questions.json";
-
-function askStartScore() {
-  const val = parseInt(prompt("İmtahana giriş balın neçedir? (0–50 arası)"));
-  if (isNaN(val) || val < 0 || val > 50) {
-    alert("0–50 arasında yaz.");
-    return askStartScore();
-  }
-  startScore = val;
-  return true;
-}
-
-function shuffle(a) {
-  return a.sort(() => Math.random() - 0.5);
-}
-
-async function getQuestions() {
-  const res = await fetch(QUESTIONS_URL);
-  return await res.json();
+// Fisher-Yates Qarışdırma Alqoritmi (Sualları və variantları təsadüfi edir)
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
 }
 
 async function start() {
-  if (!askStartScore()) return;
+    // 1. Giriş balını soruş
+    const val = prompt("İmtahana giriş balın neçədir? (0–50)");
+    startScore = parseInt(val);
+    if (isNaN(startScore) || startScore < 0 || startScore > 50) {
+        alert("Zəhmət olmasa 0 və 50 arası düzgün rəqəm daxil edin.");
+        return start();
+    }
 
-  let questions = await getQuestions();
-  if (!questions || questions.length === 0) {
-    document.getElementById("quiz").innerHTML = "Soru yok.";
-    return;
-  }
+    try {
+        // 2. Data Basedən (questions.json) sualları çək
+        const res = await fetch(QUESTIONS_URL);
+        let allQuestions = await res.json();
+        
+        // 3. Cavabı boş olan xətalı sualları təmizlə
+        allQuestions = allQuestions.filter(q => q.correct && q.correct !== "");
 
-  questions = shuffle(questions).slice(0, 25);
-  const quizDiv = document.getElementById("quiz");
-  quizDiv.innerHTML = "";
+        // 4. Bütün bazadan təsadüfi 25 sual seç
+        currentQuestions = shuffle(allQuestions).slice(0, 25);
+        
+        const quizDiv = document.getElementById("quiz");
+        quizDiv.innerHTML = "";
 
-  questions.forEach((q, i) => {
-  const keys = shuffle(Object.keys(q.options));
+        // 5. Sualları ekrana yazdır
+        currentQuestions.forEach((q, i) => {
+            let optionsHtml = "";
+            // Variantları da hər tələbə üçün qarışdırırıq
+            let keys = Object.keys(q.options); 
+            
+            keys.forEach(key => {
+                optionsHtml += `
+                    <label class="option">
+                        <input type="radio" name="q${i}" value="${key}"> ${key}) ${q.options[key]}
+                    </label>`;
+            });
 
-  let html = `<p><b>${i + 1}. ${q.q}</b></p>`;
-  keys.forEach(k => {
-    html += `
-      <label>
-        <input type="radio" name="q${i}" value="${k}">
-        ${k}) ${q.options[k]}
-      </label><br>`;
-  });
+            quizDiv.innerHTML += `
+                <div id="block${i}" class="question-block">
+                    <p><b>${i + 1}. ${q.q}</b></p>
+                    ${optionsHtml}
+                    <div id="feedback${i}" style="margin-top:10px;"></div>
+                </div>`;
+        });
 
-  quizDiv.innerHTML += html;
-});
+        // 6. Taymeri başlat
+        interval = setInterval(updateTimer, 1000);
 
-  localStorage.setItem("currentExam", JSON.stringify(questions));
-  interval = setInterval(updateTimer, 1000);
+    } catch (err) {
+        document.getElementById("quiz").innerHTML = "Xəta: Suallar yüklənmədi. JSON faylını yoxlayın.";
+    }
 }
 
 function updateTimer() {
-  if (TIME <= 0) {
-    clearInterval(interval);
-    finish();
-    return;
-  }
-  TIME--;
-  const m = Math.floor(TIME / 60),
-        s = TIME % 60;
-  document.getElementById("timer").innerText =
-    `${m}:${s.toString().padStart(2, "0")}`;
+    if (TIME <= 0) { finish(); return; }
+    TIME--;
+    let m = Math.floor(TIME / 60);
+    let s = TIME % 60;
+    document.getElementById("timer").innerText = `Qalan vaxt: ${m}:${s < 10 ? '0'+s : s}`;
 }
 
 function finish() {
-  clearInterval(interval);
-  const questions = JSON.parse(localStorage.getItem("currentExam") || "[]");
-  let score = 0, correctCount = 0, wrongCount = 0;
+    clearInterval(interval);
+    window.scrollTo(0, 0);
+    document.getElementById("finishBtn").style.display = "none";
 
-  questions.forEach((q, i) => {
-    const selected =
-      document.querySelector(`input[name="q${i}"]:checked`);
-    if (!selected) return;
+    let correctCount = 0;
+    
+    currentQuestions.forEach((q, i) => {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        const block = document.getElementById(`block${i}`);
+        const feedback = document.getElementById(`feedback${i}`);
 
-    if (selected.value === q.correct) {
-      score += 2;
-      correctCount++;
-    } else {
-      score -= 1;
-      wrongCount++;
-    }
-  });
+        if (selected && selected.value === q.correct) {
+            correctCount++;
+            block.classList.add("correct-ans");
+            feedback.innerHTML = "<b>✅ Doğru</b>";
+        } else {
+            block.classList.add("wrong-ans");
+            feedback.innerHTML = `<b>❌ Səhv!</b> Düzgün variant: <b style="color:green">${q.correct}</b>`;
+        }
+    });
 
-  let total = startScore + score;
-  total = Math.max(0, Math.min(100, total));
-
-  let grade = "F";
-  if (total >= 91) grade = "A";
-  else if (total >= 81) grade = "B";
-  else if (total >= 71) grade = "C";
-  else if (total >= 61) grade = "D";
-  else if (total >= 51) grade = "E";
-
-  document.getElementById("result").innerHTML = `
-    Doğru: ${correctCount}<br>
-    Sehv: ${wrongCount}<br>
-    Imtahan Bali: ${score}<br>
-    Giriş Bali: ${startScore}<br>
-    Cemi Bal: ${total} / 100<br>
-    Umumi: <b>${grade}</b>
-  `;
+    let examScore = correctCount * 2; // Hər sual 2 bal
+    let total = startScore + examScore;
+    
+    document.getElementById("result").innerHTML = `
+        <div style="background:#2c3e50; color:white; padding:20px; border-radius:10px; text-align:center;">
+            <h2>İmtahan Bitdi</h2>
+            <p>Düzgün cavab: ${correctCount} / 25</p>
+            <p>Sınaq balı: ${examScore}</p>
+            <hr>
+            <h3>Yekun Bal: ${total}</h3>
+        </div>`;
 }
 
+// Səhifə yüklənəndə başlat
 start();
 </script>
 
 </body>
 </html>
-
 
 
 
