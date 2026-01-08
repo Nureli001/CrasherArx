@@ -1,5 +1,5 @@
 {
-    "q":DVD disklerin yaddas hecmi ne qederdir? "",
+    "q":"DVD disklerin yaddas hecmi ne qederdir? ",
     "options": { "A": "4,7GB", "B": "700MB", "C": "8,5GB", "D": "1,44MB" },
     "correct": "A"
   },
@@ -468,3 +468,4 @@
     "options": { "A": "1.44 MB", "B": "4.7 GB", "C": "8.5 MB", "D": "700 MB" },
     "correct": ""
   },
+
