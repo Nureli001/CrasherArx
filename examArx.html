@@ -17,6 +17,7 @@
         #result { margin-top: 20px; }
         .correct-ans { background-color: #d4edda !important; border-color: #c3e6cb; }
         .wrong-ans { background-color: #f8d7da !important; border-color: #f5c6cb; }
+        .skipped-ans { background-color: #fff3cd !important; border-color: #ffeeba; }
     </style>
 </head>
 <body>
@@ -36,7 +37,6 @@ let startScore = 0;
 let currentQuestions = [];
 const QUESTIONS_URL = "questions.json";
 
-// Fisher-Yates Qarışdırma Alqoritmi (Sualları və variantları təsadüfi edir)
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -46,7 +46,6 @@ function shuffle(array) {
 }
 
 async function start() {
-    // 1. Giriş balını soruş
     const val = prompt("İmtahana giriş balın neçədir? (0–50)");
     startScore = parseInt(val);
     if (isNaN(startScore) || startScore < 0 || startScore > 50) {
@@ -55,23 +54,16 @@ async function start() {
     }
 
     try {
-        // 2. Data Basedən (questions.json) sualları çək
         const res = await fetch(QUESTIONS_URL);
         let allQuestions = await res.json();
-        
-        // 3. Cavabı boş olan xətalı sualları təmizlə
         allQuestions = allQuestions.filter(q => q.correct && q.correct !== "");
-
-        // 4. Bütün bazadan təsadüfi 25 sual seç
         currentQuestions = shuffle(allQuestions).slice(0, 25);
         
         const quizDiv = document.getElementById("quiz");
         quizDiv.innerHTML = "";
 
-        // 5. Sualları ekrana yazdır
         currentQuestions.forEach((q, i) => {
             let optionsHtml = "";
-            // Variantları da hər tələbə üçün qarışdırırıq
             let keys = Object.keys(q.options); 
             
             keys.forEach(key => {
@@ -81,6 +73,12 @@ async function start() {
                     </label>`;
             });
 
+            // "Boşluq" variantının əlavə edilməsi (Həmişə axırda)
+            optionsHtml += `
+                <label class="option" style="color: #7f8c8d; border-top: 1px dashed #ccc; margin-top: 10px;">
+                    <input type="radio" name="q${i}" value="BOS"> <i>Boşluq (Bal silinmir)</i>
+                </label>`;
+
             quizDiv.innerHTML += `
                 <div id="block${i}" class="question-block">
                     <p><b>${i + 1}. ${q.q}</b></p>
@@ -89,11 +87,9 @@ async function start() {
                 </div>`;
         });
 
-        // 6. Taymeri başlat
         interval = setInterval(updateTimer, 1000);
-
     } catch (err) {
-        document.getElementById("quiz").innerHTML = "Xəta: Suallar yüklənmədi. JSON faylını yoxlayın.";
+        document.getElementById("quiz").innerHTML = "Xəta: Suallar yüklənmədi.";
     }
 }
 
@@ -111,41 +107,57 @@ function finish() {
     document.getElementById("finishBtn").style.display = "none";
 
     let correctCount = 0;
+    let wrongCount = 0;
+    let skippedCount = 0;
     
     currentQuestions.forEach((q, i) => {
         const selected = document.querySelector(`input[name="q${i}"]:checked`);
         const block = document.getElementById(`block${i}`);
         const feedback = document.getElementById(`feedback${i}`);
 
-        if (selected && selected.value === q.correct) {
-            correctCount++;
-            block.classList.add("correct-ans");
-            feedback.innerHTML = "<b>✅ Doğru</b>";
+        if (selected) {
+            if (selected.value === q.correct) {
+                correctCount++;
+                block.classList.add("correct-ans");
+                feedback.innerHTML = "<b>✅ Doğru (+2 bal)</b>";
+            } else if (selected.value === "BOS") {
+                skippedCount++;
+                block.classList.add("skipped-ans");
+                feedback.innerHTML = `<b>⚪ Boş buraxıldı (0 bal).</b> Düzgün: <b style="color:green">${q.correct}</b>`;
+            } else {
+                wrongCount++;
+                block.classList.add("wrong-ans");
+                feedback.innerHTML = `<b>❌ Səhv! (-1 bal).</b> Düzgün: <b style="color:green">${q.correct}</b>`;
+            }
         } else {
-            block.classList.add("wrong-ans");
-            feedback.innerHTML = `<b>❌ Səhv!</b> Düzgün variant: <b style="color:green">${q.correct}</b>`;
+            skippedCount++;
+            block.classList.add("skipped-ans");
+            feedback.innerHTML = `<b>⚪ Cavablandırılmadı (0 bal).</b> Düzgün: <b style="color:green">${q.correct}</b>`;
         }
     });
 
-    let examScore = correctCount * 2; // Hər sual 2 bal
+    // Riyazi hesablama: Düzgünlər * 2, Səhvlər * (-1)
+    let examScore = (correctCount * 2) - (wrongCount * 1);
     let total = startScore + examScore;
     
     document.getElementById("result").innerHTML = `
         <div style="background:#2c3e50; color:white; padding:20px; border-radius:10px; text-align:center;">
-            <h2>İmtahan Bitdi</h2>
-            <p>Düzgün cavab: ${correctCount} / 25</p>
-            <p>Sınaq balı: ${examScore}</p>
+            <h2>İmtahan Nəticəsi</h2>
+            <p>Doğru cavab: ${correctCount} x 2 = +${correctCount * 2}</p>
+            <p>Səhv cavab: ${wrongCount} x 1 = -${wrongCount}</p>
+            <p>Boş buraxılan: ${skippedCount}</p>
             <hr>
-            <h3>Yekun Bal: ${total}</h3>
+            <h3>Sınaq Balı: ${examScore}</h3>
+            <h3>Ümumi Yekun Bal: ${total}</h3>
         </div>`;
 }
 
-// Səhifə yüklənəndə başlat
 start();
 </script>
 
 </body>
 </html>
+
 
 
 
